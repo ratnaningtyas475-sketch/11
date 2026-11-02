@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>Procedure Text Interactive Quiz</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Mencegah text di-highlight atau di-copy untuk mencegah penggunaan translate eksternal */
+        body {
+            -webkit-user-select: none; /* Safari */
+            -ms-user-select: none; /* IE 10 and IE 11 */
+            user-select: none; /* Standard syntax */
+            background-color: #f3f4f6;
+        }
+        /* Mengizinkan input text untuk diketik */
+        input[type="text"] {
+            -webkit-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
+        }
+        .btn-option {
+            transition: all 0.2s ease;
+        }
+        .btn-option:disabled {
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <!-- MAIN CONTAINER -->
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden relative">
+        
+        <!-- HEADER -->
+        <div class="bg-blue-600 text-white p-6 text-center">
+            <h1 class="text-3xl font-bold">Procedure Text Challenge</h1>
+            <p class="text-sm mt-2 opacity-90">English for Vocational High School (SMK) Grade X</p>
+        </div>
+
+        <!-- SCREEN 1: START/LOGIN -->
+        <div id="start-screen" class="p-8">
+            <h2 class="text-xl font-semibold mb-6 text-center text-gray-700">Enter Your Details to Start</h2>
+            <div class="space-y-4 max-w-md mx-auto">
+                <div>
+                    <label class="block text-gray-600 text-sm font-bold mb-2" for="playerName">Full Name:</label>
+                    <input type="text" id="playerName" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. Budi Santoso" autocomplete="off">
+                </div>
+                <div>
+                    <label class="block text-gray-600 text-sm font-bold mb-2" for="playerClass">Class:</label>
+                    <input type="text" id="playerClass" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g. X TKJ 1" autocomplete="off">
+                </div>
+                <div id="error-msg" class="text-red-500 text-sm hidden text-center">Please fill in both your Name and Class.</div>
+                <button onclick="startGame()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded focus:outline-none focus:shadow-outline transition duration-200 mt-4">
+                    Start Quiz
+                </button>
+            </div>
+        </div>
+
+        <!-- SCREEN 2: QUIZ -->
+        <div id="quiz-screen" class="p-8 hidden">
+            <div class="flex justify-between items-center mb-6 border-b pb-4">
+                <span class="text-gray-500 font-semibold" id="question-tracker">Question 1 / 50</span>
+                <span class="text-blue-600 font-bold" id="score-tracker">Score: 0</span>
+            </div>
+            
+            <div id="context-container" class="mb-4 text-gray-700 italic hidden bg-gray-100 p-4 rounded border-l-4 border-blue-500 text-sm">
+                <!-- Text context for questions will appear here -->
+            </div>
+
+            <h3 class="text-xl font-medium text-gray-800 mb-6" id="question-text">Loading question...</h3>
+            
+            <div class="space-y-3" id="options-container">
+                <!-- Options will be generated here -->
+            </div>
+
+            <div class="mt-8 text-right">
+                <button id="next-btn" onclick="nextQuestion()" class="hidden bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded focus:outline-none transition duration-200">
+                    Next Question ➔
+                </button>
+            </div>
+        </div>
+
+        <!-- SCREEN 3: RESULT -->
+        <div id="result-screen" class="p-8 hidden text-center">
+            <div class="mb-6">
+                <svg class="w-20 h-20 text-green-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <h2 class="text-3xl font-bold text-gray-800 mb-2">Quiz Completed!</h2>
+            <p class="text-lg text-gray-600 mb-6">Great job, <span id="display-name" class="font-bold text-blue-600"></span> from <span id="display-class" class="font-bold text-blue-600"></span>!</p>
+            
+            <div class="bg-gray-100 rounded-lg p-6 mb-8 max-w-sm mx-auto">
+                <p class="text-sm text-gray-500 uppercase tracking-wide">Final Score</p>
+                <p class="text-5xl font-black text-blue-700 my-2" id="final-score">0</p>
+                <p class="text-sm text-gray-500">out of 100</p>
+            </div>
+
+            <button onclick="downloadCertificate()" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-8 rounded shadow-lg focus:outline-none transition duration-200 inline-flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                Download Certificate
+            </button>
+        </div>
+
+    </div>
+
+    <!-- Hidden canvas for certificate generation -->
+    <canvas id="certCanvas" width="800" height="600" class="hidden"></canvas>
+
+    <script>
+        // --- QUIZ DATA ---
+        // 50 Questions covering Meaning, Generic Structure, and Language Features of Procedure Text
+        const questions = [
+            // Meaning / Purpose (1-10)
+            { q: "What is the social function of a procedure text?", options: ["To amuse the reader with a story.", "To explain how to make or do something completely through a sequence of steps.", "To describe a particular person, place, or thing.", "To persuade the reader that something is important."], answer: 1 },
+            { q: "Which of the following is the best example of a procedure text?", options: ["A fairy tale about a princess.", "A recipe for making fried rice.", "A news report about an earthquake.", "An opinion piece on global warming."], answer: 1 },
+            { q: "The communicative purpose of a manual is to...", options: ["Tell past events.", "Entertain readers.", "Provide instructions on how to operate a tool.", "Describe natural phenomena."], answer: 2 },
+            { q: "Procedure texts usually help the readers to...", options: ["Achieve a specific goal efficiently and safely.", "Feel sad or happy.", "Understand historical events.", "Analyze a literary work."], answer: 0 },
+            { q: "If you want to know how to install a software on your computer, what kind of text should you read?", options: ["Descriptive text", "Narrative text", "Recount text", "Procedure text"], answer: 3 },
+            { q: "Which statement is TRUE about procedure text?", options: ["It uses simple past tense.", "It focuses on describing a specific object's physical appearance.", "It uses imperative sentences to give commands.", "It always contains a moral lesson."], answer: 2 },
+            { q: "What is the main goal of reading a recipe?", options: ["To know the history of the food.", "To know how to cook the food properly.", "To criticize the chef.", "To find out the price of the ingredients."], answer: 1 },
+            { q: "A procedure text can be in the form of...", options: ["Recipes, manuals, and tutorials.", "Myths, legends, and fables.", "Diaries, biographies, and journals.", "Poems, songs, and rhymes."], answer: 0 },
+            { q: "Why must the steps in a procedure text be in chronological order?", options: ["Because it makes the text longer.", "Because readers like long stories.", "Because the goal cannot be achieved if steps are randomized.", "Because the writer wants to confuse the reader."], answer: 2 },
+            { q: "Procedure text aims to show how something is accomplished through a sequence of...", options: ["Opinions", "Arguments", "Steps or actions", "Characters and settings"], answer: 2 },
+            
+            // Generic Structure (11-25)
+            { q: "What is the first part of the generic structure in a procedure text?", options: ["Materials", "Steps", "Goal/Aim", "Conclusion"], answer: 2 },
+            { q: "The 'Goal' or 'Aim' in a procedure text is usually found in...", options: ["The title or introductory paragraph.", "The middle of the steps.", "The last sentence of the text.", "The materials section."], answer: 0 },
+            { q: "Which part of a procedure text lists the things needed to achieve the goal?", options: ["Orientation", "Materials / Ingredients", "Steps", "Re-orientation"], answer: 1 },
+            { q: "Are materials/ingredients always required in all types of procedure texts?", options: ["Yes, every procedure text must have materials.", "No, manuals (how to do/operate something) sometimes don't need a materials list.", "Yes, otherwise it is not a procedure text.", "No, recipes do not need materials."], answer: 1 },
+            { q: "The 'Steps' section in a procedure text contains...", options: ["A list of tools.", "The writer's opinion.", "The sequence of actions to achieve the goal.", "The background of the author."], answer: 2 },
+            { q: "If a text is titled 'How to Make a Kite', this title serves as the...", options: ["Steps", "Goal", "Materials", "Resolution"], answer: 1 },
+            { q: "In a recipe, salt, sugar, and flour belong to the...", options: ["Methods", "Goal", "Ingredients", "Equipment"], answer: 2 },
+            { q: "In a manual, a screwdriver, hammer, and nails belong to the...", options: ["Ingredients", "Steps", "Tools / Equipment", "Aim"], answer: 2 },
+            { q: "What happens if a procedure text misses the 'Steps' part?", options: ["It becomes a descriptive text.", "The reader will not know how to achieve the goal.", "The reader will understand better.", "It becomes a recount text."], answer: 1 },
+            { q: "Which of the following belongs to 'Steps'?", options: ["2 eggs, 1 cup of milk.", "How to use a washing machine.", "First, plug in the cable into the socket.", "It is a very delicious cake."], answer: 2 },
+            { q: "Which of the following sequences represents the correct generic structure of a recipe?", options: ["Goal - Steps - Materials", "Materials - Goal - Steps", "Goal - Materials - Steps", "Steps - Materials - Goal"], answer: 2 },
+            { q: "Can a procedure text have a concluding statement (optional)?", options: ["No, it is strictly prohibited.", "Yes, sometimes it provides a closing remark like 'Your coffee is ready to serve'.", "Yes, it must always have a long conclusion.", "No, it must end abruptly."], answer: 1 },
+            { q: "The phrase 'What you need' in a text usually indicates the...", options: ["Steps", "Goal", "Materials/Tools", "Orientation"], answer: 2 },
+            { q: "The phrase 'What to do' in a text usually indicates the...", options: ["Steps", "Goal", "Materials/Tools", "Evaluation"], answer: 0 },
+            { q: "An optional part of a procedure text that shows the final result is sometimes called...", options: ["Complication", "Result / Yield", "Abstract", "Climax"], answer: 1 },
+
+            // Language Features (26-40)
+            { q: "Which tense is predominantly used in a procedure text?", options: ["Simple Past Tense", "Simple Present Tense", "Future Continuous Tense", "Past Perfect Tense"], answer: 1 },
+            { q: "Procedure texts use imperative sentences. Which one is an imperative sentence?", options: ["I cut the onion.", "Cut the onion into thin slices.", "She is cutting the onion.", "Did you cut the onion?"], answer: 1 },
+            { q: "Words like 'first, second, next, then, finally' in a procedure text are called...", options: ["Action verbs", "Adjectives", "Temporal conjunctions", "Pronouns"], answer: 2 },
+            { q: "What is the function of temporal conjunctions in a procedure text?", options: ["To describe the materials.", "To show the sequence or order of steps.", "To express the writer's feelings.", "To give a command."], answer: 1 },
+            { q: "Which of the following is an ACTION verb commonly used in cooking recipes?", options: ["Believe", "Understand", "Pour", "Think"], answer: 2 },
+            { q: "Look at the sentence: 'Boil the water for 5 minutes.' The word 'Boil' is a/an...", options: ["Adjective", "Noun", "Action verb", "Adverb of time"], answer: 2 },
+            { q: "In the sentence 'Stir it slowly', the word 'slowly' functions as an...", options: ["Adverb of manner", "Action verb", "Adjective", "Noun"], answer: 0 },
+            { q: "Which of the following sentences uses an adverb of time / duration?", options: ["Mix the dough well.", "Bake in the oven for 30 minutes.", "Serve the cake on a plate.", "Chop the garlic finely."], answer: 1 },
+            { q: "Why are pronouns like 'I', 'He', or 'She' rarely used in procedure texts?", options: ["Because the text focuses on the action and the reader, giving direct instructions.", "Because it is an academic text.", "Because it describes a specific person.", "Because the author wants to be mysterious."], answer: 0 },
+            { q: "Identify the temporal conjunction in this sentence: 'After that, pour the hot water into the glass.'", options: ["Pour", "Hot water", "After that", "Into the glass"], answer: 2 },
+            { q: "Which of the following is NOT an action verb?", options: ["Mix", "Blend", "Know", "Press"], answer: 2 },
+            { q: "Identify the imperative sentence.", options: ["The button is pushed by him.", "You should push the button.", "Push the power button.", "He pushes the power button."], answer: 2 },
+            { q: "Words to express details of time, place, or manner (e.g., 'for five minutes', '2 centimeters from the top') are called...", options: ["Conjunctions", "Adverbials", "Verbs", "Nouns"], answer: 1 },
+            { q: "Which group of words are temporal conjunctions?", options: ["Cut, stir, blend, boil.", "Slowly, carefully, fast, well.", "First, then, next, finally.", "Sugar, salt, water, pan."], answer: 2 },
+            { q: "The sentence 'Don't touch the hot surface' is an example of...", options: ["Positive imperative", "Negative imperative (prohibition)", "Declarative sentence", "Interrogative sentence"], answer: 1 },
+
+            // Comprehension Based on Short Contexts (41-50)
+            { context: "How to Make Mango Juice\nMaterials: A ripe mango, 1 tbsp sugar, half glass of water, ice cubes.\nSteps:\n1. Peel the mango and wash it.\n2. Cut the mango into pieces.\n3. Put them into a blender.\n4. Add water, sugar, and ice cubes.\n5. Turn on the blender and wait for 1 minute.\n6. Pour the juice into a glass and serve.", 
+              q: "What must we do before cutting the mango?", options: ["Put it in the blender.", "Add water.", "Peel and wash it.", "Turn on the blender."], answer: 2 },
+            { context: "How to Make Mango Juice\nMaterials: A ripe mango, 1 tbsp sugar, half glass of water, ice cubes.\nSteps:\n1. Peel the mango and wash it.\n2. Cut the mango into pieces.\n3. Put them into a blender.\n4. Add water, sugar, and ice cubes.\n5. Turn on the blender and wait for 1 minute.\n6. Pour the juice into a glass and serve.", 
+              q: "How long should we blend the mango?", options: ["One hour", "Five minutes", "One minute", "Ten seconds"], answer: 2 },
+            { context: "How to Make Mango Juice\nMaterials: A ripe mango, 1 tbsp sugar, half glass of water, ice cubes.\nSteps:\n1. Peel the mango and wash it.\n2. Cut the mango into pieces.\n3. Put them into a blender.\n4. Add water, sugar, and ice cubes.\n5. Turn on the blender and wait for 1 minute.\n6. Pour the juice into a glass and serve.", 
+              q: "What is the purpose of the text above?", options: ["To tell how to buy a mango.", "To describe a blender.", "To instruct how to make mango juice.", "To tell a story about a mango."], answer: 2 },
+            { context: "How to use a fire extinguisher:\n1. Pull the pin.\n2. Aim the nozzle at the base of the fire.\n3. Squeeze the trigger.\n4. Sweep from side to side.", 
+              q: "Where should we aim the nozzle?", options: ["At the top of the fire.", "At the base of the fire.", "At the person.", "In the air."], answer: 1 },
+            { context: "How to use a fire extinguisher:\n1. Pull the pin.\n2. Aim the nozzle at the base of the fire.\n3. Squeeze the trigger.\n4. Sweep from side to side.", 
+              q: "What is the first step to operate the fire extinguisher?", options: ["Squeeze the trigger.", "Sweep side to side.", "Pull the pin.", "Call the fire department."], answer: 2 },
+            { context: "How to Insert a SIM Card into a Smartphone:\n1. Turn off your smartphone.\n2. Find the SIM tray on the side of your phone.\n3. Insert the ejector tool into the small hole next to the tray to pop it out.\n4. Place the SIM card into the tray properly.\n5. Push the tray back into the phone.\n6. Turn on your smartphone.", 
+              q: "What tool is needed to pop the SIM tray out?", options: ["A knife", "An ejector tool", "A screwdriver", "A hammer"], answer: 1 },
+            { context: "How to Insert a SIM Card into a Smartphone:\n1. Turn off your smartphone.\n2. Find the SIM tray on the side of your phone.\n3. Insert the ejector tool into the small hole next to the tray to pop it out.\n4. Place the SIM card into the tray properly.\n5. Push the tray back into the phone.\n6. Turn on your smartphone.", 
+              q: "When should we turn off the smartphone?", options: ["After inserting the SIM card.", "At the very beginning.", "While popping the tray out.", "We don't need to turn it off."], answer: 1 },
+            { context: "How to Charge a Laptop:\n1. Plug the adapter into a wall socket.\n2. Connect the charger to the laptop's charging port.\n3. Wait until the battery icon shows 100%.\n4. Unplug the charger from the laptop and the socket.", 
+              q: "The word 'Unplug' in step 4 means...", options: ["To connect something.", "To break something.", "To remove a plug from a socket.", "To turn on a device."], answer: 2 },
+            { context: "How to Charge a Laptop:\n1. Plug the adapter into a wall socket.\n2. Connect the charger to the laptop's charging port.\n3. Wait until the battery icon shows 100%.\n4. Unplug the charger from the laptop and the socket.", 
+              q: "Based on the text, when should we remove the charger?", options: ["Immediately after plugging it in.", "When the laptop is hot.", "When the battery icon shows 100%.", "When the power goes out."], answer: 2 },
+            { context: "General Knowledge on Procedure Text", 
+              q: "If you write a procedure text about 'How to make a paper plane', what kind of verbs should you use most?", options: ["Flew, made, threw.", "Fold, crease, throw.", "Folding, creasing, throwing.", "Will fold, will crease, will throw."], answer: 1 }
+        ];
+
+        // --- GAME VARIABLES ---
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let playerName = "";
+        let playerClass = "";
+        let hasAnsweredCurrent = false;
+
+        // --- DOM ELEMENTS ---
+        const startScreen = document.getElementById('start-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const resultScreen = document.getElementById('result-screen');
+        
+        const playerNameInput = document.getElementById('playerName');
+        const playerClassInput = document.getElementById('playerClass');
+        const errorMsg = document.getElementById('error-msg');
+        
+        const questionTracker = document.getElementById('question-tracker');
+        const scoreTracker = document.getElementById('score-tracker');
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const nextBtn = document.getElementById('next-btn');
+        const contextContainer = document.getElementById('context-container');
+
+        // --- FUNCTIONS ---
+
+        function startGame() {
+            playerName = playerNameInput.value.trim();
+            playerClass = playerClassInput.value.trim();
+
+            if (playerName === "" || playerClass === "") {
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            errorMsg.classList.add('hidden');
+            startScreen.classList.add('hidden');
+            quizScreen.classList.remove('hidden');
+
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            hasAnsweredCurrent = false;
+            nextBtn.classList.add('hidden');
+            
+            const currentQ = questions[currentQuestionIndex];
+            
+            // Update Trackers
+            questionTracker.textContent = `Question ${currentQuestionIndex + 1} / ${questions.length}`;
+            
+            // Handle context text (if available)
+            if(currentQ.context) {
+                contextContainer.innerText = currentQ.context;
+                contextContainer.classList.remove('hidden');
+            } else {
+                contextContainer.classList.add('hidden');
+            }
+
+            // Set Question Text
+            questionText.textContent = currentQ.q;
+
+            // Generate Options
+            optionsContainer.innerHTML = '';
+            currentQ.options.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                btn.className = "btn-option w-full text-left p-4 rounded border border-gray-300 bg-white hover:bg-gray-50 focus:outline-none text-gray-700 font-medium";
+                btn.textContent = `${String.fromCharCode(65 + index)}. ${opt}`; // A, B, C, D
+                btn.onclick = () => selectOption(index, btn);
+                optionsContainer.appendChild(btn);
+            });
+        }
+
+        function selectOption(selectedIndex, btnElement) {
+            if (hasAnsweredCurrent) return; // Prevent multiple answers per question
+            
+            hasAnsweredCurrent = true;
+            const currentQ = questions[currentQuestionIndex];
+            const allButtons = optionsContainer.querySelectorAll('button');
+
+            // Disable all buttons
+            allButtons.forEach(btn => {
+                btn.disabled = true;
+                btn.classList.remove('hover:bg-gray-50');
+            });
+
+            // Check Answer
+            if (selectedIndex === currentQ.answer) {
+                // Correct
+                score += 2; // 50 questions * 2 = 100 max score
+                scoreTracker.textContent = `Score: ${score}`;
+                btnElement.classList.remove('bg-white', 'border-gray-300', 'text-gray-700');
+                btnElement.classList.add('bg-green-100', 'border-green-500', 'text-green-800');
+            } else {
+                // Incorrect
+                btnElement.classList.remove('bg-white', 'border-gray-300', 'text-gray-700');
+                btnElement.classList.add('bg-red-100', 'border-red-500', 'text-red-800');
+                
+                // Highlight correct answer
+                const correctBtn = allButtons[currentQ.answer];
+                correctBtn.classList.remove('bg-white', 'border-gray-300', 'text-gray-700');
+                correctBtn.classList.add('bg-green-100', 'border-green-500', 'text-green-800');
+            }
+
+            // Show Next Button
+            nextBtn.classList.remove('hidden');
+        }
+
+        function nextQuestion() {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < questions.length) {
+                loadQuestion();
+            } else {
+                showResult();
+            }
+        }
+
+        function showResult() {
+            quizScreen.classList.add('hidden');
+            resultScreen.classList.remove('hidden');
+            
+            document.getElementById('display-name').textContent = playerName;
+            document.getElementById('display-class').textContent = playerClass;
+            document.getElementById('final-score').textContent = score;
+        }
+
+        function downloadCertificate() {
+            const canvas = document.getElementById('certCanvas');
+            const ctx = canvas.getContext('2d');
+
+            // Background
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Border
+            ctx.strokeStyle = '#2563eb'; // blue-600
+            ctx.lineWidth = 15;
+            ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
+            
+            ctx.strokeStyle = '#fbbf24'; // yellow-400
+            ctx.lineWidth = 5;
+            ctx.strokeRect(35, 35, canvas.width - 70, canvas.height - 70);
+
+            // Header Text
+            ctx.fillStyle = '#1f2937';
+            ctx.font = 'bold 40px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('CERTIFICATE OF ACHIEVEMENT', canvas.width / 2, 120);
+
+            ctx.font = '20px Arial';
+            ctx.fillStyle = '#4b5563';
+            ctx.fillText('This certificate is proudly presented to:', canvas.width / 2, 170);
+
+            // Name
+            ctx.font = 'bold 45px Arial';
+            ctx.fillStyle = '#2563eb';
+            ctx.fillText(playerName.toUpperCase(), canvas.width / 2, 240);
+
+            // Class
+            ctx.font = '25px Arial';
+            ctx.fillStyle = '#374151';
+            ctx.fillText(`Class: ${playerClass}`, canvas.width / 2, 290);
+
+            // Description
+            ctx.font = '20px Arial';
+            ctx.fillStyle = '#4b5563';
+            ctx.fillText('For successfully completing the Procedure Text Interactive Quiz', canvas.width / 2, 350);
+
+            // Score
+            ctx.font = 'bold 60px Arial';
+            ctx.fillStyle = '#10b981'; // green-500
+            ctx.fillText(`Score: ${score} / 100`, canvas.width / 2, 430);
+
+            // Date / Signature line
+            const today = new Date().toLocaleDateString();
+            ctx.font = '18px Arial';
+            ctx.fillStyle = '#6b7280';
+            ctx.fillText(`Date: ${today}`, 150, 530);
+            
+            ctx.fillText('English Teacher', canvas.width - 150, 530);
+            ctx.beginPath();
+            ctx.moveTo(canvas.width - 230, 500);
+            ctx.lineTo(canvas.width - 70, 500);
+            ctx.stroke();
+
+            // Trigger Download
+            const image = canvas.toDataURL("image/png");
+            const link = document.createElement('a');
+            link.download = `Certificate_${playerName.replace(/\s+/g, '_')}_ProcedureText.png`;
+            link.href = image;
+            link.click();
+        }
+    </script>
+</body>
+</html>
